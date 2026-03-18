@@ -44,8 +44,11 @@ class MimicMotionInference:
 
         self.pipeline = create_pipeline(infer_config, self.device)
 
-        # Convert entire pipeline to fp16 to match checkpoint weights
-        self.pipeline = self.pipeline.to(device=self.device, dtype=self.dtype)
+        # Convert each component to fp16 on GPU individually
+        self.pipeline.unet = self.pipeline.unet.to(device=self.device, dtype=self.dtype)
+        self.pipeline.vae = self.pipeline.vae.to(device=self.device, dtype=self.dtype)
+        self.pipeline.image_encoder = self.pipeline.image_encoder.to(device=self.device, dtype=self.dtype)
+        self.pipeline.pose_net = self.pipeline.pose_net.to(device=self.device, dtype=self.dtype)
 
         print("[Inference] MimicMotion pipeline loaded (with PoseNet).")
 
