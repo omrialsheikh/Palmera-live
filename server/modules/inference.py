@@ -1,8 +1,11 @@
 """
 Module B: MimicMotion Inference
-Pose-driven full body animation using MimicMotion + SVD + LCM.
+Uses the actual MimicMotion pipeline (not vanilla SVD).
+MimicMotion = SVD + PoseNet + confidence-aware pose conditioning.
 """
 
+import sys
+import os
 import torch
 import numpy as np
 from PIL import Image
@@ -10,6 +13,11 @@ from typing import Optional
 
 from server.utils.latent_cache import LatentCache
 from server.modules.stream_buffer import StreamBuffer
+
+# Add MimicMotion repo to path
+MIMIC_REPO = os.path.join(os.path.dirname(__file__), "..", "..", "third_party", "MimicMotion")
+if os.path.exists(MIMIC_REPO):
+    sys.path.insert(0, MIMIC_REPO)
 
 
 class MimicMotionInference:
@@ -24,39 +32,19 @@ class MimicMotionInference:
         )
 
     def load(self):
-        """Load MimicMotion pipeline with SVD backbone."""
-        from diffusers import StableVideoDiffusionPipeline
+        """Load MimicMotion pipeline with PoseNet + modified UNet."""
+        from mimicmotion.utils.loader import create_pipeline
+        from omegaconf import OmegaConf
 
-        svd_path = self.config["models"]["svd"]
-        mimic_path = self.config["models"]["mimic_motion"]
+        # Build config that MimicMotion expects
+        infer_config = OmegaConf.create({
+            "base_model_path": self.config["models"]["svd"],
+            "ckpt_path": self.config["models"]["mimic_motion"],
+        })
 
-        # Load SVD as base pipeline (keep original scheduler)
-        self.pipeline = StableVideoDiffusionPipeline.from_pretrained(
-            svd_path,
-            torch_dtype=self.dtype,
-            variant="fp16",
-        )
+        self.pipeline = create_pipeline(infer_config, self.device)
 
-        # Load MimicMotion weights on top
-        mimic_weights = torch.load(
-            mimic_path, map_location="cpu", weights_only=False
-        )
-        self._load_mimic_weights(mimic_weights)
-
-        self.pipeline = self.pipeline.to(self.device)
-
-        print("[Inference] MimicMotion pipeline loaded.")
-
-    def _load_mimic_weights(self, state_dict: dict):
-        """Load MimicMotion-specific weights into the SVD pipeline."""
-        unet_state = {
-            k.replace("unet.", ""): v
-            for k, v in state_dict.items()
-            if k.startswith("unet.")
-        }
-        if unet_state:
-            self.pipeline.unet.load_state_dict(unet_state, strict=False)
-            print(f"[Inference] Loaded {len(unet_state)} MimicMotion UNet weights.")
+        print("[Inference] MimicMotion pipeline loaded (with PoseNet).")
 
     @torch.no_grad()
     def generate_frames(
@@ -67,41 +55,68 @@ class MimicMotionInference:
         num_steps: Optional[int] = None,
     ) -> list[np.ndarray]:
         """
-        Generate animated frames from reference + pose sequence.
+        Generate animated frames using MimicMotion pipeline.
 
         Args:
-            reference_image: The avatar reference image
-            pose_images: List of pose skeleton images (from DWPose)
-            cache: Latent cache with pre-computed reference embeddings
-            num_steps: Override inference steps (default from config)
+            reference_image: The avatar reference image (PIL)
+            pose_images: List of pose skeleton images from DWPose (PIL)
+            cache: Latent cache (for future optimization)
+            num_steps: Override inference steps
 
         Returns:
             List of generated BGR frames (numpy arrays)
         """
         steps = num_steps or self.config["inference"]["num_steps"]
+        num_frames = len(pose_images)
 
-        # Use cached reference latent if available
-        ref_latent = cache.get("reference_latent")
+        # Convert pose images to tensor [F, H, W, 3] normalized to [-1, 1]
+        h, w = self.config["height"], self.config["width"]
 
-        num_frames = max(len(pose_images), 2)  # SVD needs at least 2 frames
+        pose_pixels = []
+        for pose_img in pose_images:
+            pose_resized = pose_img.resize((w, h))
+            pose_np = np.array(pose_resized).astype(np.float32) / 127.5 - 1.0
+            pose_pixels.append(pose_np)
+        pose_tensor = torch.tensor(np.stack(pose_pixels)).to(self.device, dtype=self.dtype)
 
+        # Resize reference image
+        ref_resized = reference_image.resize((w, h))
+
+        # Run MimicMotion pipeline
         output = self.pipeline(
-            image=reference_image,
+            ref_resized,
+            image_pose=pose_tensor,
             num_frames=num_frames,
-            num_inference_steps=25,
-            decode_chunk_size=2,
-            motion_bucket_id=127,
-            noise_aug_strength=0.02,
+            tile_size=min(num_frames, 16),
+            tile_overlap=min(num_frames // 2, 6),
+            height=h,
+            width=w,
+            fps=15,
+            noise_aug_strength=0.0,
+            num_inference_steps=steps,
             generator=torch.Generator(device=self.device).manual_seed(
                 self.config["inference"]["seed"]
             ),
+            min_guidance_scale=2.0,
+            max_guidance_scale=2.0,
+            decode_chunk_size=2,
+            output_type="pt",
+            device=self.device,
         )
 
-        # Convert pipeline output to BGR numpy frames
+        # Convert output frames to BGR numpy
         frames = []
-        for frame in output.frames[0]:
-            frame_np = np.array(frame)
-            frame_bgr = frame_np[:, :, ::-1]  # RGB -> BGR
+        video_tensor = output.frames  # [B, F, H, W, 3] uint8
+        if isinstance(video_tensor, torch.Tensor):
+            video_np = video_tensor[0].cpu().numpy()
+        else:
+            video_np = np.array(video_tensor[0])
+
+        for i in range(video_np.shape[0]):
+            frame_rgb = video_np[i]
+            if frame_rgb.max() <= 1.0:
+                frame_rgb = (frame_rgb * 255).astype(np.uint8)
+            frame_bgr = frame_rgb[:, :, ::-1]  # RGB -> BGR
             frames.append(frame_bgr)
 
         return frames

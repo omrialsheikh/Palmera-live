@@ -1,5 +1,8 @@
 # Models & weights
 models/
+
+# Third party repos
+third_party/
 *.pth
 *.ckpt
 *.safetensors
