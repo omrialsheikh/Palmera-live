@@ -90,11 +90,12 @@ class MimicMotionInference:
         # Use cached reference latent if available
         ref_latent = cache.get("reference_latent")
 
+        # SVD uses decode_chunk_size and min_guidance_scale instead of guidance_scale
         output = self.pipeline(
             image=reference_image,
             num_frames=len(pose_images),
             num_inference_steps=steps,
-            guidance_scale=self.config["inference"]["guidance_scale"],
+            decode_chunk_size=2,
             generator=torch.Generator(device=self.device).manual_seed(
                 self.config["inference"]["seed"]
             ),
