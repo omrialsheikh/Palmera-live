@@ -22,8 +22,19 @@ class FaceEnhancer:
             print("[FaceEnhance] Disabled in config.")
             return
 
-        from basicsr.utils import img2tensor, tensor2img
-        from facexlib.utils.face_restoration_helper import FaceRestoreHelper
+        try:
+            from codeformer.basicsr.utils import img2tensor, tensor2img
+            from codeformer.facelib.utils.face_restoration_helper import FaceRestoreHelper
+            from codeformer.basicsr.archs.codeformer_arch import CodeFormer
+        except ImportError:
+            try:
+                from basicsr.archs.codeformer_arch import CodeFormer
+                from basicsr.utils import img2tensor, tensor2img
+                from facexlib.utils.face_restoration_helper import FaceRestoreHelper
+            except ImportError:
+                print("[FaceEnhance] CodeFormer not available, disabling.")
+                self.enabled = False
+                return
 
         self.face_helper = FaceRestoreHelper(
             upscale_factor=1,
@@ -33,8 +44,6 @@ class FaceEnhancer:
             save_ext="png",
             device=self.device,
         )
-
-        from basicsr.archs.codeformer_arch import CodeFormer
 
         self.net = CodeFormer(
             dim_embd=512,
