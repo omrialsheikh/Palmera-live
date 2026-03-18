@@ -3,6 +3,7 @@ Module: Pose Estimation (DWPose)
 Extracts 133-point body + hand keypoints from webcam frames.
 """
 
+import os
 import cv2
 import numpy as np
 import torch
@@ -19,10 +20,14 @@ class PoseEstimator:
     def load(self):
         from controlnet_aux import DWposeDetector
 
-        self.detector = DWposeDetector.from_pretrained(
-            "yzd-v/DWPose",
-            det_filename="yolox_l.onnx",
-            pose_filename="dw-ll_ucoco_384.onnx",
+        det_path = os.path.join(self.config.get("models", {}).get("dwpose", "./models/dwpose"), "yolox_l.onnx")
+        pose_path = os.path.join(self.config.get("models", {}).get("dwpose", "./models/dwpose"), "dw-ll_ucoco_384.onnx")
+
+        self.detector = DWposeDetector(
+            det_config_path=None,
+            det_ckpt_path=det_path,
+            pose_config_path=None,
+            pose_ckpt_path=pose_path,
         )
         print("[Pose] DWPose loaded.")
 
