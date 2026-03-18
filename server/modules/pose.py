@@ -24,10 +24,9 @@ class PoseEstimator:
         pose_path = os.path.join(self.config.get("models", {}).get("dwpose", "./models/dwpose"), "dw-ll_ucoco_384.onnx")
 
         self.detector = DWposeDetector(
-            det_config_path=None,
-            det_ckpt_path=det_path,
-            pose_config_path=None,
-            pose_ckpt_path=pose_path,
+            det_ckpt=det_path,
+            pose_ckpt=pose_path,
+            device=str(self.device),
         )
         print("[Pose] DWPose loaded.")
 
