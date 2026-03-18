@@ -26,31 +26,24 @@ class MimicMotionInference:
     def load(self):
         """Load MimicMotion pipeline with SVD backbone."""
         from diffusers import StableVideoDiffusionPipeline
-        from diffusers.schedulers import LCMScheduler
 
         svd_path = self.config["models"]["svd"]
         mimic_path = self.config["models"]["mimic_motion"]
 
-        # Load SVD as base pipeline
+        # Load SVD as base pipeline (keep original scheduler)
         self.pipeline = StableVideoDiffusionPipeline.from_pretrained(
             svd_path,
             torch_dtype=self.dtype,
             variant="fp16",
         )
 
-        # Switch scheduler to LCM for 4-step inference
-        self.pipeline.scheduler = LCMScheduler.from_config(
-            self.pipeline.scheduler.config
-        )
-
         # Load MimicMotion weights on top
-        mimic_weights = torch.load(mimic_path, map_location="cpu")
+        mimic_weights = torch.load(
+            mimic_path, map_location="cpu", weights_only=False
+        )
         self._load_mimic_weights(mimic_weights)
 
         self.pipeline = self.pipeline.to(self.device)
-
-        # Enable memory optimizations
-        self.pipeline.enable_xformers_memory_efficient_attention()
 
         print("[Inference] MimicMotion pipeline loaded.")
 
@@ -90,12 +83,15 @@ class MimicMotionInference:
         # Use cached reference latent if available
         ref_latent = cache.get("reference_latent")
 
-        # SVD uses decode_chunk_size and min_guidance_scale instead of guidance_scale
+        num_frames = max(len(pose_images), 2)  # SVD needs at least 2 frames
+
         output = self.pipeline(
             image=reference_image,
-            num_frames=len(pose_images),
-            num_inference_steps=steps,
+            num_frames=num_frames,
+            num_inference_steps=25,
             decode_chunk_size=2,
+            motion_bucket_id=127,
+            noise_aug_strength=0.02,
             generator=torch.Generator(device=self.device).manual_seed(
                 self.config["inference"]["seed"]
             ),
