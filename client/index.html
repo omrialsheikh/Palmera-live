@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Palmera Live</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0a0a0a;
+            color: #fff;
+            min-height: 100vh;
+        }
+        .header {
+            text-align: center;
+            padding: 24px;
+            border-bottom: 1px solid #222;
+        }
+        .header h1 { font-size: 24px; font-weight: 600; }
+        .header p { color: #888; font-size: 14px; margin-top: 4px; }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .control-group {
+            flex: 1;
+            min-width: 200px;
+            background: #141414;
+            border: 1px solid #222;
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .upload-area {
+            border: 2px dashed #333;
+            border-radius: 8px;
+            padding: 24px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .upload-area:hover { border-color: #666; }
+        .upload-area.has-image { border-style: solid; border-color: #4CAF50; }
+        .upload-area img {
+            max-width: 100%;
+            max-height: 120px;
+            border-radius: 4px;
+        }
+
+        input[type="file"] { display: none; }
+
+        .btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-primary:disabled { background: #333; color: #666; cursor: not-allowed; }
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+        }
+        .btn-danger:hover { background: #b91c1c; }
+
+        .video-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .video-panel {
+            background: #141414;
+            border: 1px solid #222;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .video-panel .panel-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid #222;
+            font-size: 13px;
+            color: #888;
+        }
+        .video-panel video, .video-panel canvas {
+            width: 100%;
+            display: block;
+            background: #000;
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: #141414;
+            border: 1px solid #222;
+            border-radius: 8px;
+            margin-top: 16px;
+            font-size: 13px;
+            color: #888;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .status-dot.connected { background: #4CAF50; }
+        .status-dot.disconnected { background: #dc2626; }
+        .status-dot.processing { background: #f59e0b; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Palmera Live</h1>
+        <p>Full-body avatar animation in real-time</p>
+    </div>
+
+    <div class="container">
+        <!-- Controls -->
+        <div class="controls">
+            <div class="control-group">
+                <label>Avatar Image</label>
+                <div class="upload-area" id="avatarUpload" onclick="document.getElementById('avatarInput').click()">
+                    <span id="avatarText">Click to upload avatar</span>
+                </div>
+                <input type="file" id="avatarInput" accept="image/*">
+            </div>
+
+            <div class="control-group">
+                <label>Background (optional)</label>
+                <div class="upload-area" id="bgUpload" onclick="document.getElementById('bgInput').click()">
+                    <span id="bgText">Click to upload background</span>
+                </div>
+                <input type="file" id="bgInput" accept="image/*">
+            </div>
+
+            <div class="control-group" style="display: flex; flex-direction: column; justify-content: center; gap: 8px;">
+                <button class="btn btn-primary" id="startBtn" disabled onclick="startStream()">
+                    Start Animation
+                </button>
+                <button class="btn btn-danger" id="stopBtn" disabled onclick="stopStream()">
+                    Stop
+                </button>
+            </div>
+        </div>
+
+        <!-- Video Grid -->
+        <div class="video-grid">
+            <div class="video-panel">
+                <div class="panel-header">Webcam Input</div>
+                <video id="webcam" autoplay muted playsinline></video>
+            </div>
+            <div class="video-panel">
+                <div class="panel-header">Avatar Output</div>
+                <canvas id="output"></canvas>
+            </div>
+        </div>
+
+        <!-- Status -->
+        <div class="status-bar">
+            <div>
+                <span class="status-dot disconnected" id="statusDot"></span>
+                <span id="statusText">Disconnected</span>
+            </div>
+            <div id="fpsCounter">-- FPS</div>
+        </div>
+    </div>
+
+    <script src="/static/stream.js"></script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+# Palmera Live - Pipeline Configuration
+
+# Hardware
+device: "cuda"
+dtype: "fp16"
+
+# Resolution
+width: 768
+height: 1024
+
+# Inference
+inference:
+  num_steps: 4                    # LCM steps
+  guidance_scale: 1.5
+  seed: 42
+
+# Sliding window
+temporal:
+  window_size: 8                  # Frames in buffer
+  overlap: 2                      # Overlap between windows
+  fusion_method: "latent"         # latent | blend
+
+# Pose estimation (DWPose)
+pose:
+  backend: "onnx"                 # onnx | tensorrt
+  num_keypoints: 133              # Body + hands
+  confidence_threshold: 0.3
+
+# Face enhancement (CodeFormer)
+face_enhance:
+  enabled: true
+  fidelity: 0.7                   # 0=quality, 1=fidelity
+  crop_padding: 1.3               # Face crop padding ratio
+
+# Compositor
+compositor:
+  blending: "poisson"             # poisson | alpha
+  edge_feather: 5                 # Pixels for edge softening
+
+# Server
+server:
+  host: "0.0.0.0"
+  port: 7860
+  max_connections: 4
+
+# Model paths
+models:
+  mimic_motion: "./models/mimic_motion/MimicMotion_1-1.pth"
+  svd: "./models/svd/"
+  dwpose: "./models/dwpose/"
+  codeformer: "./models/codeformer/codeformer.pth"
+  sam: "./models/sam/sam_vit_b.pth"

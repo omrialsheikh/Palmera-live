@@ -1,0 +1,21 @@
+services:
+  palmera-live:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "7860:7860"
+    volumes:
+      - ../models:/app/models
+      - ../outputs:/app/outputs
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - CUDA_VISIBLE_DEVICES=0
+    restart: unless-stopped

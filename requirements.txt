@@ -1,0 +1,41 @@
+# Core ML
+torch>=2.1.0
+torchvision>=0.16.0
+diffusers>=0.25.0
+transformers>=4.36.0
+accelerate>=0.25.0
+safetensors>=0.4.0
+
+# Inference optimization
+xformers>=0.0.23
+
+# Pose estimation
+controlnet_aux>=0.0.7
+
+# Segmentation
+segment-anything>=1.0
+
+# Face enhancement
+basicsr>=1.4.2
+facexlib>=0.3.0
+
+# Server
+fastapi>=0.108.0
+uvicorn[standard]>=0.25.0
+websockets>=12.0
+python-multipart>=0.0.6
+
+# Image/Video processing
+opencv-python-headless>=4.8.0
+Pillow>=10.0.0
+numpy<2.0
+av>=11.0.0
+
+# Config
+omegaconf>=2.3.0
+pyyaml>=6.0
+
+# Utils
+tqdm>=4.66.0
+einops>=0.7.0
+huggingface-hub>=0.20.0
