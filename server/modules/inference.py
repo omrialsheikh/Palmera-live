@@ -44,6 +44,9 @@ class MimicMotionInference:
 
         self.pipeline = create_pipeline(infer_config, self.device)
 
+        # Convert entire pipeline to fp16 to match checkpoint weights
+        self.pipeline = self.pipeline.to(device=self.device, dtype=self.dtype)
+
         print("[Inference] MimicMotion pipeline loaded (with PoseNet).")
 
     @torch.no_grad()
