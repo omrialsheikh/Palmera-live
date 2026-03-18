@@ -12,9 +12,7 @@ echo "============================================"
 echo ""
 echo "[1/5] Downloading MimicMotion..."
 if [ ! -f "$MODELS_DIR/mimic_motion/MimicMotion_1-1.pth" ]; then
-    huggingface-cli download tencent/MimicMotion \
-        --local-dir "$MODELS_DIR/mimic_motion" \
-        --include "MimicMotion_1-1.pth"
+    python -c "from huggingface_hub import hf_hub_download; hf_hub_download('tencent/MimicMotion', 'MimicMotion_1-1.pth', local_dir='$MODELS_DIR/mimic_motion')"
     echo "  -> MimicMotion downloaded."
 else
     echo "  -> MimicMotion already exists, skipping."
@@ -24,8 +22,7 @@ fi
 echo ""
 echo "[2/5] Downloading SVD 1.1..."
 if [ ! -d "$MODELS_DIR/svd/unet" ]; then
-    huggingface-cli download stabilityai/stable-video-diffusion-img2vid-xt-1-1 \
-        --local-dir "$MODELS_DIR/svd"
+    python -c "from huggingface_hub import snapshot_download; snapshot_download('stabilityai/stable-video-diffusion-img2vid-xt-1-1', local_dir='$MODELS_DIR/svd')"
     echo "  -> SVD 1.1 downloaded."
 else
     echo "  -> SVD 1.1 already exists, skipping."
